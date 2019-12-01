@@ -22,11 +22,23 @@ namespace ContosoUniversity.Controllers
         
 
         // GET: Students
-        public async Task<IActionResult> Index(string sortOrder, string searchString)
+        public async Task<IActionResult> Index(string sortOrder,string currentFilter, string searchString, int? pageNumber)
         {
+            // pass parameters to the View
+            ViewData["CurrentSort"] = sortOrder;
             ViewData["NameSortParm"] = String.IsNullOrEmpty(sortOrder) ? "name_desc" : "";
             ViewData["DateSortParm"] = sortOrder == "Date" ? "date_desc" : "Date";
             ViewData["CurrentFilter"] = searchString;
+
+            // If search string is changed during paging, page has to be reset to 1 because the new filter can result in different data to display. The search string is changed when a value is entered in the text box and the Submit button is pressed. In that case, the searchString parameter isn't null.
+            if (searchString != null)
+            {
+                pageNumber = 1;
+            }
+            else
+            {
+                searchString = currentFilter;
+            }
 
             var students = from s in _context.Students
                            select s;
@@ -51,7 +63,10 @@ namespace ContosoUniversity.Controllers
                     students = students.OrderBy(s => s.LastName);
                     break;
             }
-            return View(await students.AsNoTracking().ToListAsync());
+
+            // set the page size and convert the students query to a single page in a collection type that supports paging and pass the single page to the view
+            int pageSize = 3;
+            return View(await PaginatedList<Student>.CreateAsync(students.AsNoTracking(), pageNumber ?? 1, pageSize));
         }
 
         // GET: Students/Details/5
